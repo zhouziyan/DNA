@@ -4,8 +4,6 @@
 ## Distributed Networks Architecture
 DNA is the golang implementation of a decentralized and distributed network protocol which is based on blockchain technology. It can be used for digitalize assets or shares and accomplish some financial business through peer-to-peer network such as registration, issuing, making transactions, settlement, payment and notary, etc.
 
-It compatibles with antsahares and targets to be more open source community friendly and better performance.
-
 ## Features
 
 The target of DNA is supporting following features：
