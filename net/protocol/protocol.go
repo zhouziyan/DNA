@@ -20,15 +20,17 @@ type NodeAddr struct {
 	ID       uint64 // Unique ID
 }
 
-// The node capability type
+// The node type flag
 const (
 	VERIFYNODE  = 1
 	SERVICENODE = 2
+	DATANODE    = 3
 )
 
 const (
 	VERIFYNODENAME  = "verify"
 	SERVICENODENAME = "service"
+	DATANODENAME    = "data"
 )
 
 const (
