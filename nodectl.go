@@ -11,6 +11,7 @@ import (
 	"DNA/cli/data"
 	"DNA/cli/debug"
 	"DNA/cli/info"
+	"DNA/cli/multisig"
 	"DNA/cli/privpayload"
 	"DNA/cli/recover"
 	"DNA/cli/test"
@@ -46,6 +47,7 @@ func main() {
 		*data.NewCommand(),
 		*bookkeeper.NewCommand(),
 		*recover.NewCommand(),
+		*multisig.NewCommand(),
 	}
 	sort.Sort(cli.CommandsByName(app.Commands))
 	sort.Sort(cli.FlagsByName(app.Flags))
