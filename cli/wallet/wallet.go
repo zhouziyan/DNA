@@ -30,6 +30,16 @@ func showAccountsInfo(wallet account.Client) {
 	}
 }
 
+func showPrivateKeyInfo(wallet account.Client) {
+	accounts := wallet.GetAccounts()
+	fmt.Println(" ID   Address\t\t\t\t Private Key")
+	fmt.Println("----  -------\t\t\t\t ----------")
+	for i, account := range accounts {
+		address, _ := account.ProgramHash.ToAddress()
+		fmt.Printf("%4s  %s %s\n", strconv.Itoa(i), address, BytesToHexString(account.PrivateKey))
+	}
+}
+
 func showMultisigInfo(wallet account.Client) {
 	contracts := wallet.GetContracts()
 	accounts := wallet.GetAccounts()
@@ -196,8 +206,9 @@ func walletAction(c *cli.Context) error {
 
 	// list wallet info
 	if item := c.String("list"); item != "" {
-		if item != "account" && item != "balance" && item != "verbose" && item != "multisig" {
-			fmt.Fprintln(os.Stderr, "--list [account | balance | verbose | multisig]")
+		if item != "account" && item != "balance" && item != "verbose" &&
+			item != "multisig" && item != "privatekey" {
+			fmt.Fprintln(os.Stderr, "--list [account | balance | verbose | multisig | privatekey]")
 			os.Exit(1)
 		} else {
 			wallet, err := account.Open(name, getPassword(passwd))
@@ -214,6 +225,8 @@ func walletAction(c *cli.Context) error {
 				showVerboseInfo(wallet)
 			case "multisig":
 				showMultisigInfo(wallet)
+			case "privatekey":
+				showPrivateKeyInfo(wallet)
 			}
 		}
 		return nil

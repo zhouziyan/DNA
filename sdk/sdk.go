@@ -54,39 +54,32 @@ func sortCoinsByValue(coins map[*transaction.UTXOTxInput]*account.Coin, addrtype
 	return coinList
 }
 
-func MakeRegTransaction(wallet account.Client, name string, value string) (*transaction.Transaction, error) {
+func MakeRegTransaction(wallet account.Client, name string, value string, description string) (*transaction.Transaction, error) {
 	admin, err := wallet.GetDefaultAccount()
 	if err != nil {
-		return nil, err
-	}
-	issuer := admin
-	asset := &Asset{name, name, byte(MaxPrecision), AssetType(Token), UTXO}
-	transactionContract, err := contract.CreateSignatureContract(admin.PubKey())
-	if err != nil {
-		fmt.Println("CreateSignatureContract failed")
 		return nil, err
 	}
 	fixedValue, err := StringToFixed64(value)
 	if err != nil {
 		return nil, err
 	}
-	tx, _ := transaction.NewRegisterAssetTransaction(asset, fixedValue, issuer.PubKey(), transactionContract.ProgramHash)
-	txAttr := transaction.NewTxAttribute(transaction.Nonce, []byte(strconv.FormatInt(rand.Int63(), 10)))
-	tx.Attributes = make([]*transaction.TxAttribute, 0)
-	tx.Attributes = append(tx.Attributes, &txAttr)
-	if err := signTransaction(issuer, tx); err != nil {
-		fmt.Println("sign regist transaction failed")
+	issuer := admin
+	asset := &Asset{name, description, byte(MaxPrecision), AssetType(Token), UTXO}
+	txn, _ := transaction.NewRegisterAssetTransaction(asset, fixedValue, issuer.PubKey(), admin.ProgramHash)
+	txAttr := transaction.NewTxAttribute(transaction.Nonce, []byte(strconv.FormatUint(rand.Uint64(), 10)))
+	txn.Attributes = make([]*transaction.TxAttribute, 0)
+	txn.Attributes = append(txn.Attributes, &txAttr)
+
+	ctx := contract.NewContractContext(txn)
+	if err := wallet.Sign(ctx); err != nil {
 		return nil, err
 	}
+	txn.SetPrograms(ctx.GetPrograms())
 
-	return tx, nil
+	return txn, nil
 }
 
 func MakeIssueTransaction(wallet account.Client, assetID Uint256, address string, value string) (*transaction.Transaction, error) {
-	admin, err := wallet.GetDefaultAccount()
-	if err != nil {
-		return nil, err
-	}
 	programHash, err := ToScriptHash(address)
 	if err != nil {
 		return nil, err
@@ -101,15 +94,18 @@ func MakeIssueTransaction(wallet account.Client, assetID Uint256, address string
 		ProgramHash: programHash,
 	}
 	outputs := []*transaction.TxOutput{issueTxOutput}
-	tx, _ := transaction.NewIssueAssetTransaction(outputs)
-	txAttr := transaction.NewTxAttribute(transaction.Nonce, []byte(strconv.FormatInt(rand.Int63(), 10)))
-	tx.Attributes = make([]*transaction.TxAttribute, 0)
-	tx.Attributes = append(tx.Attributes, &txAttr)
-	if err := signTransaction(admin, tx); err != nil {
-		fmt.Println("sign issue transaction failed")
+	txn, _ := transaction.NewIssueAssetTransaction(outputs)
+	txAttr := transaction.NewTxAttribute(transaction.Nonce, []byte(strconv.FormatUint(rand.Uint64(), 10)))
+	txn.Attributes = make([]*transaction.TxAttribute, 0)
+	txn.Attributes = append(txn.Attributes, &txAttr)
+
+	ctx := contract.NewContractContext(txn)
+	if err := wallet.Sign(ctx); err != nil {
 		return nil, err
 	}
-	return tx, nil
+	txn.SetPrograms(ctx.GetPrograms())
+
+	return txn, nil
 }
 
 func MakeLockAssetTransaction(wallet account.Client, assetID Uint256, value string, height uint32) (*transaction.Transaction, error) {

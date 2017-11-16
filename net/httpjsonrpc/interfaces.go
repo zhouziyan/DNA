@@ -274,9 +274,6 @@ func sendRawTransaction(params []interface{}) map[string]interface{} {
 		if err := txn.Deserialize(bytes.NewReader(hex)); err != nil {
 			return DnaRpcInvalidTransaction
 		}
-		if txn.TxType != tx.TransferAsset && txn.TxType != tx.LockAsset && txn.TxType != tx.BookKeeper {
-			return DnaRpc("invalid transaction type")
-		}
 		hash = txn.Hash()
 		if errCode := VerifyAndSendTx(&txn); errCode != ErrNoError {
 			return DnaRpc(errCode.Error())
@@ -716,46 +713,14 @@ func deleteAccount(params []interface{}) map[string]interface{} {
 	return DnaRpc(true)
 }
 
-func makeRegTxn(params []interface{}) map[string]interface{} {
+func registerAsset(params []interface{}) map[string]interface{} {
 	if len(params) < 2 {
 		return DnaRpcNil
 	}
-	var assetName, assetValue string
+	var name, value string
 	switch params[0].(type) {
 	case string:
-		assetName = params[0].(string)
-	default:
-		return DnaRpcInvalidParameter
-	}
-	switch params[1].(type) {
-	case string:
-		assetValue = params[1].(string)
-	default:
-		return DnaRpcInvalidParameter
-	}
-	if Wallet == nil {
-		return DnaRpc("open wallet first")
-	}
-
-	regTxn, err := sdk.MakeRegTransaction(Wallet, assetName, assetValue)
-	if err != nil {
-		return DnaRpcInternalError
-	}
-
-	if errCode := VerifyAndSendTx(regTxn); errCode != ErrNoError {
-		return DnaRpcInvalidTransaction
-	}
-	return DnaRpc(true)
-}
-
-func makeIssueTxn(params []interface{}) map[string]interface{} {
-	if len(params) < 3 {
-		return DnaRpcNil
-	}
-	var asset, value, address string
-	switch params[0].(type) {
-	case string:
-		asset = params[0].(string)
+		name = params[0].(string)
 	default:
 		return DnaRpcInvalidParameter
 	}
@@ -765,33 +730,60 @@ func makeIssueTxn(params []interface{}) map[string]interface{} {
 	default:
 		return DnaRpcInvalidParameter
 	}
-	switch params[2].(type) {
+	description := name
+	txn, err := sdk.MakeRegTransaction(Wallet, name, value, description)
+	if err != nil {
+		return DnaRpc("error: " + err.Error())
+	}
+	if errCode := VerifyAndSendTx(txn); errCode != ErrNoError {
+		return DnaRpc("error: " + errCode.Error())
+	}
+	txHash := txn.Hash()
+	return DnaRpc(BytesToHexString(txHash.ToArrayReverse()))
+}
+
+func issueAsset(params []interface{}) map[string]interface{} {
+	if len(params) < 3 {
+		return DnaRpcNil
+	}
+	var asset, address, value string
+	switch params[0].(type) {
 	case string:
-		address = params[2].(string)
+		asset = params[0].(string)
 	default:
 		return DnaRpcInvalidParameter
 	}
-	if Wallet == nil {
-		return DnaRpc("open wallet first")
+	switch params[1].(type) {
+	case string:
+		address = params[1].(string)
+	default:
+		return DnaRpcInvalidParameter
 	}
+	switch params[2].(type) {
+	case string:
+		value = params[2].(string)
+	default:
+		return DnaRpcInvalidParameter
+	}
+
 	tmp, err := HexStringToBytesReverse(asset)
 	if err != nil {
-		return DnaRpc("invalid asset ID")
+		return DnaRpc("error: invalid asset ID")
 	}
 	var assetID Uint256
 	if err := assetID.Deserialize(bytes.NewReader(tmp)); err != nil {
-		return DnaRpc("invalid asset hash")
+		return DnaRpc("error: invalid asset hash")
 	}
-	issueTxn, err := sdk.MakeIssueTransaction(Wallet, assetID, address, value)
+	txn, err := sdk.MakeIssueTransaction(Wallet, assetID, address, value)
 	if err != nil {
-		return DnaRpcInternalError
+		return DnaRpc("error: " + err.Error())
 	}
 
-	if errCode := VerifyAndSendTx(issueTxn); errCode != ErrNoError {
-		return DnaRpcInvalidTransaction
+	if errCode := VerifyAndSendTx(txn); errCode != ErrNoError {
+		return DnaRpc("error: " + errCode.Error())
 	}
-
-	return DnaRpc(true)
+	txHash := txn.Hash()
+	return DnaRpc(BytesToHexString(txHash.ToArrayReverse()))
 }
 
 func sendToAddress(params []interface{}) map[string]interface{} {

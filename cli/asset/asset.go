@@ -1,17 +1,13 @@
 package asset
 
 import (
-	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 
-	"DNA/account"
 	. "DNA/cli/common"
 	. "DNA/common"
-	"DNA/core/transaction"
 	"DNA/net/httpjsonrpc"
-	"DNA/sdk"
 
 	"github.com/urfave/cli"
 )
@@ -20,17 +16,6 @@ const (
 	RANDBYTELEN = 4
 )
 
-func openWallet(name string, passwd []byte) account.Client {
-	if name == account.WalletFileName {
-		fmt.Println("Using default wallet: ", account.WalletFileName)
-	}
-	wallet, err := account.Open(name, passwd)
-	if err != nil {
-		fmt.Println("Failed to open wallet: ", name)
-		os.Exit(1)
-	}
-	return wallet
-}
 func parseAssetName(c *cli.Context) string {
 	name := c.String("name")
 	if name == "" {
@@ -42,25 +27,14 @@ func parseAssetName(c *cli.Context) string {
 	return name
 }
 
-func parseAssetID(c *cli.Context) Uint256 {
+func parseAssetID(c *cli.Context) string {
 	asset := c.String("asset")
 	if asset == "" {
 		fmt.Println("missing flag [--asset]")
 		os.Exit(1)
 	}
-	var assetBytes []byte
-	var assetID Uint256
-	assetBytes, err := HexStringToBytesReverse(asset)
-	if err != nil {
-		fmt.Println("invalid asset ID")
-		os.Exit(1)
-	}
-	if err := assetID.Deserialize(bytes.NewReader(assetBytes)); err != nil {
-		fmt.Println("invalid asset hash")
-		os.Exit(1)
-	}
 
-	return assetID
+	return asset
 }
 
 func parseAddress(c *cli.Context) string {
@@ -96,59 +70,33 @@ func assetAction(c *cli.Context) error {
 		cli.ShowSubcommandHelp(c)
 		return nil
 	}
-
 	value := c.String("value")
 	if value == "" {
 		fmt.Println("asset amount is required with [--value]")
 		return nil
 	}
-
-	var txn *transaction.Transaction
-	var buffer bytes.Buffer
+	var resp []byte
 	var err error
 	switch {
 	case c.Bool("reg"):
 		name := parseAssetName(c)
-		wallet := openWallet(c.String("wallet"), WalletPassword(c.String("password")))
-		txn, err = sdk.MakeRegTransaction(wallet, name, value)
+		resp, err = httpjsonrpc.Call(Address(), "registerasset", 0, []interface{}{name, value})
 	case c.Bool("issue"):
 		assetID := parseAssetID(c)
 		address := parseAddress(c)
-		wallet := openWallet(c.String("wallet"), WalletPassword(c.String("password")))
-		txn, err = sdk.MakeIssueTransaction(wallet, assetID, address, value)
-	case c.Bool("transfer"):
-		assetID := c.String("asset")
-		address := parseAddress(c)
-		resp, err := httpjsonrpc.Call(Address(), "sendtoaddress", 0, []interface{}{assetID, address, value})
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return err
-		}
-		FormatOutput(resp)
-		return nil
+		resp, err = httpjsonrpc.Call(Address(), "issueasset", 0, []interface{}{assetID, address, value})
 	case c.Bool("lock"):
-		assetID := c.String("asset")
+		assetID := parseAssetID(c)
 		height := parseHeight(c)
-		resp, err := httpjsonrpc.Call(Address(), "lockasset", 0, []interface{}{assetID, value, height})
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return err
-		}
-		FormatOutput(resp)
-		return nil
+		resp, err = httpjsonrpc.Call(Address(), "lockasset", 0, []interface{}{assetID, value, height})
+	case c.Bool("transfer"):
+		assetID := parseAssetID(c)
+		address := parseAddress(c)
+		resp, err = httpjsonrpc.Call(Address(), "sendtoaddress", 0, []interface{}{assetID, address, value})
 	default:
 		cli.ShowSubcommandHelp(c)
 		return nil
 	}
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-	if err := txn.Serialize(&buffer); err != nil {
-		fmt.Println("serialize transaction failed")
-		return err
-	}
-	resp, err := httpjsonrpc.Call(Address(), "sendrawtransaction", 0, []interface{}{BytesToHexString(buffer.Bytes())})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return err
@@ -180,15 +128,6 @@ func NewCommand() *cli.Command {
 			cli.BoolFlag{
 				Name:  "lock",
 				Usage: "lock asset",
-			},
-			cli.StringFlag{
-				Name:  "wallet, w",
-				Usage: "wallet name",
-				Value: account.WalletFileName,
-			},
-			cli.StringFlag{
-				Name:  "password, p",
-				Usage: "wallet password",
 			},
 			cli.StringFlag{
 				Name:  "asset, a",
