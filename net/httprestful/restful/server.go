@@ -86,7 +86,7 @@ func (rt *restServer) Start() error {
 		}
 	} else {
 		var err error
-		rt.listener, err = net.Listen("tcp", ":"+strconv.Itoa(Parameters.HttpRestPort))
+		rt.listener, err = net.Listen("tcp", "localhost:"+strconv.Itoa(Parameters.HttpRestPort))
 		if err != nil {
 			log.Fatal("net.Listen: ", err.Error())
 			return err
@@ -413,7 +413,7 @@ func (rt *restServer) initTlsListen() (net.Listener, error) {
 	}
 
 	log.Info("TLS listen port is ", strconv.Itoa(Parameters.HttpRestPort))
-	listener, err := tls.Listen("tcp", ":"+strconv.Itoa(Parameters.HttpRestPort), tlsConfig)
+	listener, err := tls.Listen("tcp", "localhost:"+strconv.Itoa(Parameters.HttpRestPort), tlsConfig)
 	if err != nil {
 		log.Error(err)
 		return nil, err
