@@ -14,6 +14,7 @@ import (
 	"DNA/cli/multisig"
 	"DNA/cli/privpayload"
 	"DNA/cli/recover"
+	"DNA/cli/smartcontract"
 	"DNA/cli/test"
 	"DNA/cli/wallet"
 
@@ -48,6 +49,7 @@ func main() {
 		*bookkeeper.NewCommand(),
 		*recover.NewCommand(),
 		*multisig.NewCommand(),
+		*smartcontract.NewCommand(),
 	}
 	sort.Sort(cli.CommandsByName(app.Commands))
 	sort.Sort(cli.FlagsByName(app.Flags))
