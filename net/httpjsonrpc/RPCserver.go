@@ -31,6 +31,8 @@ func StartRPCServer() {
 	HandleFunc("registerasset", registerAsset)
 	HandleFunc("issueasset", issueAsset)
 	HandleFunc("lockasset", lockAsset)
+	HandleFunc("sendchatmessage", sendChatMessage)
+
 	HandleFunc("createmultisigtransaction", createMultisigTransaction)
 	HandleFunc("signmultisigtransaction", signMultisigTransaction)
 	//HandleFunc("sendrawtransaction", sendRawTransaction)

@@ -357,6 +357,13 @@ func (node *node) Xmit(message interface{}) error {
 			log.Error("Error New inv message")
 			return err
 		}
+	case string:
+		msg := message.(string)
+		buffer, err = NewChatMsg([]byte(msg))
+		if err != nil {
+			log.Error("Error New chat message: ", err)
+			return err
+		}
 	default:
 		log.Warn("Unknown Xmit message type")
 		return errors.New("Unknown Xmit message type")

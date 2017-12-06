@@ -164,6 +164,11 @@ func SetDefaultFunc(def func(http.ResponseWriter, *http.Request)) {
 func Handle(w http.ResponseWriter, r *http.Request) {
 	mainMux.RLock()
 	defer mainMux.RUnlock()
+
+	w.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("content-type", "application/json;charset=utf-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
 	//JSON RPC commands should be POSTs
 	if r.Method != "POST" {
 		if mainMux.defaultFunction != nil {
@@ -214,6 +219,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 			log.Error("HTTP JSON RPC Handle - json.Marshal: ", err)
 			return
 		}
+
 		w.Write(data)
 	} else {
 		//if the function does not exist

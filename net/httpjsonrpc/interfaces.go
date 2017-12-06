@@ -18,6 +18,7 @@ import (
 	"DNA/core/signature"
 	tx "DNA/core/transaction"
 	. "DNA/errors"
+	"DNA/events"
 	"DNA/sdk"
 
 	"github.com/mitchellh/go-homedir"
@@ -889,6 +890,25 @@ func lockAsset(params []interface{}) map[string]interface{} {
 		return DnaRpc(errCode.Error())
 	}
 	return DnaRpc(BytesToHexString(txnHash.ToArrayReverse()))
+}
+
+func sendChatMessage(params []interface{}) map[string]interface{} {
+	if len(params) < 1 {
+		return DnaRpcNil
+	}
+	var message string
+	switch params[0].(type) {
+	case string:
+		message = params[0].(string)
+	default:
+		return DnaRpcInvalidParameter
+	}
+	ledger.DefaultLedger.Blockchain.BCEvents.Notify(events.EventChatMessage, message)
+	if err := node.Xmit(message); err != nil {
+		return DnaRpcInternalError
+	}
+
+	return DnaRpcSuccess
 }
 
 func signMultisigTransaction(params []interface{}) map[string]interface{} {
