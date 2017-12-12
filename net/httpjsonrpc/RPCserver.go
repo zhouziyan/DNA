@@ -30,7 +30,6 @@ func StartRPCServer() {
 	HandleFunc("setdebuginfo", setDebugInfo)
 	HandleFunc("sendtoaddress", sendToAddress)
 	HandleFunc("lockasset", lockAsset)
-	HandleFunc("sendchatmessage", sendChatMessage)
 
 	HandleFunc("createmultisigtransaction", createMultisigTransaction)
 	HandleFunc("signmultisigtransaction", signMultisigTransaction)

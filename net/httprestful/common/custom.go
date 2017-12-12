@@ -2,8 +2,10 @@ package common
 
 import (
 	. "DNA/common"
+	"DNA/core/ledger"
 	tx "DNA/core/transaction"
 	. "DNA/errors"
+	"DNA/events"
 	. "DNA/net/httpjsonrpc"
 	Err "DNA/net/httprestful/error"
 	"bytes"
@@ -132,5 +134,22 @@ func SendRecordTransaction(cmd map[string]interface{}) map[string]interface{} {
 		resp["Error"] = int64(errCode)
 		return resp
 	}
+	return resp
+}
+
+func SendChatMessage(cmd map[string]interface{}) map[string]interface{} {
+	resp := ResponsePack(Err.SUCCESS)
+	message, ok := cmd["Message"].(string)
+	if !ok {
+		resp["Error"] = Err.INVALID_PARAMS
+		return resp
+	}
+	if err := node.Xmit(message); err != nil {
+		resp["Error"] = Err.INTERNAL_ERROR
+		return resp
+	}
+	ledger.DefaultLedger.Blockchain.BCEvents.Notify(events.EventChatMessage, message)
+	resp["Result"] = true
+
 	return resp
 }
