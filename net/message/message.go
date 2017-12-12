@@ -160,7 +160,6 @@ func AllocMsg(t string, length int) Messager {
 	case "chat":
 		var msg chat
 		copy(msg.msgHdr.CMD[0:len(t)], t)
-		msg.content = make([]byte, length-MSGHDRLEN)
 		return &msg
 	default:
 		log.Warn("Unknown message type")

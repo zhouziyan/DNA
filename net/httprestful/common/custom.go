@@ -1,6 +1,10 @@
 package common
 
 import (
+	"bytes"
+	"encoding/json"
+	"time"
+
 	. "DNA/common"
 	"DNA/core/ledger"
 	tx "DNA/core/transaction"
@@ -8,12 +12,16 @@ import (
 	"DNA/events"
 	. "DNA/net/httpjsonrpc"
 	Err "DNA/net/httprestful/error"
-	"bytes"
-	"encoding/json"
-	"time"
+	"DNA/net/message"
 )
 
-const AttributeMaxLen = 252
+const (
+	AttributeMaxLen = 252
+	MinUserNameLen  = 4
+	MaxUserNameLen  = 32
+	MinChatMsgLen   = 1
+	MaxChatMsgLen   = 1024
+)
 
 //record
 func getRecordData(cmd map[string]interface{}) ([]byte, int64) {
@@ -139,16 +147,47 @@ func SendRecordTransaction(cmd map[string]interface{}) map[string]interface{} {
 
 func SendChatMessage(cmd map[string]interface{}) map[string]interface{} {
 	resp := ResponsePack(Err.SUCCESS)
-	message, ok := cmd["Message"].(string)
+
+	// Address parameter could be omitted
+	address, ok := cmd["Address"].(string)
+	if ok {
+		_, err := ToScriptHash(address)
+		if err != nil {
+			resp["Error"] = Err.INVALID_PARAMS
+			return resp
+		}
+	}
+
+	userName, ok := cmd["Username"].(string)
 	if !ok {
 		resp["Error"] = Err.INVALID_PARAMS
 		return resp
 	}
-	if err := node.Xmit(message); err != nil {
+	if len(userName) < MinUserNameLen || len(userName) > MaxUserNameLen {
+		resp["Error"] = Err.INVALID_PARAMS
+		return resp
+	}
+
+	content, ok := cmd["Message"].(string)
+	if !ok {
+		resp["Error"] = Err.INVALID_PARAMS
+		return resp
+	}
+	if len(content) < MinChatMsgLen || len(content) > MaxChatMsgLen {
+		resp["Error"] = Err.INVALID_PARAMS
+		return resp
+	}
+
+	m := &message.ChatPayload{
+		Address:  address,
+		UserName: userName,
+		Content:  []byte(content),
+	}
+	if err := node.Xmit(m); err != nil {
 		resp["Error"] = Err.INTERNAL_ERROR
 		return resp
 	}
-	ledger.DefaultLedger.Blockchain.BCEvents.Notify(events.EventChatMessage, message)
+	ledger.DefaultLedger.Blockchain.BCEvents.Notify(events.EventChatMessage, m)
 	resp["Result"] = true
 
 	return resp

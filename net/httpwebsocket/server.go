@@ -1,6 +1,8 @@
 package httpwebsocket
 
 import (
+	"bytes"
+
 	. "DNA/common"
 	. "DNA/common/config"
 	"DNA/core/ledger"
@@ -8,8 +10,8 @@ import (
 	"DNA/net/httprestful/common"
 	Err "DNA/net/httprestful/error"
 	"DNA/net/httpwebsocket/websocket"
+	"DNA/net/message"
 	. "DNA/net/protocol"
-	"bytes"
 )
 
 var ws *websocket.WsServer
@@ -139,9 +141,11 @@ func PushChatMessage(v interface{}) {
 		return
 	}
 	resp := common.ResponsePack(Err.SUCCESS)
-	if chatMessage, ok := v.(string); ok {
-		resp["Result"] = chatMessage
+	if chatMessage, ok := v.(*message.ChatPayload); ok {
 		resp["Action"] = "pushchatmessage"
+		resp["Address"] = chatMessage.Address
+		resp["Username"] = chatMessage.UserName
+		resp["Result"] = string(chatMessage.Content)
 		ws.PushResult(resp)
 	}
 }

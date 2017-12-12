@@ -345,6 +345,13 @@ func (node *node) Xmit(message interface{}) error {
 			log.Error("Error New consensus message: ", err)
 			return err
 		}
+	case *ChatPayload:
+		p := message.(*ChatPayload)
+		buffer, err = NewChatMsg(p)
+		if err != nil {
+			log.Error("Error New chat message: ", err)
+			return err
+		}
 	case Uint256:
 		log.Debug("TX block hash message")
 		hash := message.(Uint256)
@@ -355,13 +362,6 @@ func (node *node) Xmit(message interface{}) error {
 		buffer, err = NewInv(invPayload)
 		if err != nil {
 			log.Error("Error New inv message")
-			return err
-		}
-	case string:
-		msg := message.(string)
-		buffer, err = NewChatMsg([]byte(msg))
-		if err != nil {
-			log.Error("Error New chat message: ", err)
 			return err
 		}
 	default:
