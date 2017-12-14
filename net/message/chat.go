@@ -2,6 +2,7 @@ package message
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/binary"
 	"io"
 
@@ -9,17 +10,33 @@ import (
 	"DNA/core/ledger"
 	"DNA/events"
 	. "DNA/net/protocol"
+	."DNA/common"
+	"DNA/common/log"
 )
 
 type ChatPayload struct {
 	Address  string
 	UserName string
 	Content  []byte
+	Nonce    uint64
 }
 
 type chat struct {
 	msgHdr
 	ChatPayload
+}
+
+func (msg *ChatPayload)Hash() Uint256{
+	var msgHash Uint256
+	buffer := bytes.NewBuffer([]byte{})
+	if err := msg.Serialization(buffer);err != nil {
+		log.Error("chat message serialization error")
+		return msgHash
+	}
+	temp := sha256.Sum256(buffer.Bytes())
+	msgHash = Uint256(sha256.Sum256(temp[:]))
+
+	return msgHash
 }
 
 func NewChatMsg(p *ChatPayload) ([]byte, error) {
@@ -46,7 +63,12 @@ func (msg chat) Verify(buf []byte) error {
 }
 
 func (msg chat) Handle(node Noder) error {
-	ledger.DefaultLedger.Blockchain.BCEvents.Notify(events.EventChatMessage, &msg.ChatPayload)
+	payload := &msg.ChatPayload
+	if !node.LocalNode().ExistedID(payload.Hash()) {
+		node.LocalNode().Relay(node, payload)
+		ledger.DefaultLedger.Blockchain.BCEvents.Notify(events.EventChatMessage, &msg.ChatPayload)
+	}
+
 	return nil
 }
 
@@ -58,6 +80,9 @@ func (payload ChatPayload) Serialization(w io.Writer) error {
 		return err
 	}
 	if err := serialization.WriteVarBytes(w, payload.Content); err != nil {
+		return err
+	}
+	if err := serialization.WriteUint64(w, payload.Nonce); err != nil {
 		return err
 	}
 
@@ -75,6 +100,10 @@ func (payload *ChatPayload) Deserialization(r io.Reader) error {
 		return err
 	}
 	payload.Content, err = serialization.ReadVarBytes(r)
+	if err != nil {
+		return err
+	}
+	payload.Nonce, err = serialization.ReadUint64(r)
 	if err != nil {
 		return err
 	}

@@ -4,12 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"time"
+	"math/rand"
 
 	. "DNA/common"
-	"DNA/core/ledger"
 	tx "DNA/core/transaction"
 	. "DNA/errors"
-	"DNA/events"
 	. "DNA/net/httpjsonrpc"
 	Err "DNA/net/httprestful/error"
 	"DNA/net/message"
@@ -148,11 +147,13 @@ func SendRecordTransaction(cmd map[string]interface{}) map[string]interface{} {
 func SendChatMessage(cmd map[string]interface{}) map[string]interface{} {
 	resp := ResponsePack(Err.SUCCESS)
 
-	// Address parameter could be omitted
 	address, ok := cmd["Address"].(string)
-	if ok {
-		_, err := ToScriptHash(address)
-		if err != nil {
+	if !ok {
+		resp["Error"] = Err.INVALID_PARAMS
+		return resp
+	}
+	if len(address) != 0 {
+		if _, err := ToScriptHash(address); err != nil {
 			resp["Error"] = Err.INVALID_PARAMS
 			return resp
 		}
@@ -182,12 +183,13 @@ func SendChatMessage(cmd map[string]interface{}) map[string]interface{} {
 		Address:  address,
 		UserName: userName,
 		Content:  []byte(content),
+		Nonce: rand.Uint64(),
 	}
+
 	if err := node.Xmit(m); err != nil {
 		resp["Error"] = Err.INTERNAL_ERROR
 		return resp
 	}
-	ledger.DefaultLedger.Blockchain.BCEvents.Notify(events.EventChatMessage, m)
 	resp["Result"] = true
 
 	return resp

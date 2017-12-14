@@ -561,6 +561,13 @@ func (node *node) Relay(frmnode Noder, message interface{}) error {
 			log.Error("Error New consensus message: ", err)
 			return err
 		}
+	case *ChatPayload:
+		chatMsgPayload := message.(*ChatPayload)
+		buffer, err = NewChatMsg(chatMsgPayload)
+		if err != nil {
+			log.Error("Error New chat message: ", err)
+			return err
+		}
 	case Uint256:
 		log.Debug("TX block hash message")
 		hash := message.(Uint256)
@@ -581,8 +588,7 @@ func (node *node) Relay(frmnode Noder, message interface{}) error {
 
 	node.nbrNodes.RLock()
 	for _, n := range node.nbrNodes.List {
-		if n.state == ESTABLISH && n.relay == true &&
-			n.id != frmnode.GetID() {
+		if n.state == ESTABLISH && n.relay == true {
 			if isHash && n.ExistHash(message.(Uint256)) {
 				continue
 			}
